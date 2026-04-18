@@ -35,6 +35,8 @@ class WebRTCState {
     micEnabled = $state(false);
     cameraEnabled = $state(false);
     settingsOpen = $state(false);
+    chatOpen = $state(false);
+    userListOpen = $state(false);
     endpoint = $state('');
     settings = $state({
         simulcast: 'auto',
@@ -333,6 +335,12 @@ class WebRTCState {
             up.label = video ? 'camera' : 'audio';
             up.setStream(stream);
 
+            // Ensure tracks match the desired enabled state
+            if (stream) {
+                stream.getAudioTracks().forEach(t => t.enabled = audio);
+                stream.getVideoTracks().forEach(t => t.enabled = video);
+            }
+
             stream.getTracks().forEach((t: any) => {
                 up.pc.addTrack(t, stream);
             });
@@ -343,23 +351,20 @@ class WebRTCState {
 
             this.localUpStream = up;
             this.previewStream = null; // Adopted by upStream
-
-            // Check actual track enabled state to preserve choices from preview
-            if (stream) {
-                const audioTrack = stream.getAudioTracks()[0];
-                const videoTrack = stream.getVideoTracks()[0];
-                if (audioTrack) this.micEnabled = audioTrack.enabled;
-                if (videoTrack) this.cameraEnabled = videoTrack.enabled;
-            }
+            this.micEnabled = audio;
+            this.cameraEnabled = video;
 
             up.onclose = () => {
                 const s = up.stream;
                 if (s) {
                     s.getTracks().forEach((t: any) => t.stop());
                 }
-                this.localUpStream = null;
-                this.micEnabled = false;
-                this.cameraEnabled = false;
+                // Only reset if this is still the current active stream
+                if (this.localUpStream === up) {
+                    this.localUpStream = null;
+                    this.micEnabled = false;
+                    this.cameraEnabled = false;
+                }
             };
         } catch (e: any) {
             this.error = e.toString();

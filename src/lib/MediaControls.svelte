@@ -24,6 +24,20 @@
             Stop Camera
         {/if}
     </button>
+    
+    <button 
+        class:active={rtc.userListOpen} 
+        onclick={() => rtc.userListOpen = !rtc.userListOpen}
+    >
+        Users
+    </button>
+
+    <button 
+        class:active={rtc.chatOpen} 
+        onclick={() => rtc.chatOpen = !rtc.chatOpen}
+    >
+        Chat
+    </button>
 
     <button 
         class:active={rtc.settingsOpen} 

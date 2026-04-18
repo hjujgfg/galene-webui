@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { fly } from 'svelte/transition';
     import { rtc } from '$lib/rtc.svelte';
     import LoginForm from '$lib/LoginForm.svelte';
     import VideoGrid from '$lib/VideoGrid.svelte';
@@ -14,13 +15,24 @@
         <LoginForm />
     {:else}
         <div class="app-layout">
-            <UserList />
+            {#if rtc.userListOpen}
+                <div transition:fly={{ x: -300, duration: 300 }} class="panel-wrapper">
+                    <UserList />
+                </div>
+            {/if}
+            
             <div class="main-content">
                 <VideoGrid />
                 <LocalVideo />
                 <MediaControls />
             </div>
-            <ChatPanel />
+
+            {#if rtc.chatOpen}
+                <div transition:fly={{ x: 300, duration: 300 }} class="panel-wrapper">
+                    <ChatPanel />
+                </div>
+            {/if}
+            
             <SettingsSidebar />
         </div>
     {/if}
@@ -43,6 +55,11 @@
         display: flex;
         height: 100%;
         width: 100%;
+        overflow: hidden;
+    }
+    .panel-wrapper {
+        height: 100%;
+        z-index: 10;
     }
     .main-content {
         flex: 1;

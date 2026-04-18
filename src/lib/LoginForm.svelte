@@ -30,13 +30,17 @@
     async function handleLogin() {
         loading = true;
         const finalUsername = username || `user_${Math.floor(Math.random() * 1000)}`;
+        // Capture choices now because onDestroy will trigger during rtc.join
+        // and reset the shared rtc state.
+        const desiredMic = rtc.micEnabled;
+        const desiredCamera = rtc.cameraEnabled;
 
         try {
             await rtc.connect(rtc.endpoint);
             // Join FIRST so the server knows who we are
             await rtc.join(group, finalUsername, { type: 'password', password });
-            // Now start/adopt the local stream
-            await rtc.startLocalStream(rtc.micEnabled, rtc.cameraEnabled);
+            // Now start/adopt the local stream using our captured choices
+            await rtc.startLocalStream(desiredMic, desiredCamera);
         } catch (e: any) {
             console.error('Login failed:', e);
             rtc.error = e.message || e.toString();

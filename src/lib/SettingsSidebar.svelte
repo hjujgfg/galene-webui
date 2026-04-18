@@ -1,9 +1,13 @@
 <script lang="ts">
+    import { fly } from 'svelte/transition';
     import { rtc } from '$lib/rtc.svelte';
 </script>
 
 {#if rtc.settingsOpen}
-    <div class="settings-sidebar glass">
+    <div 
+        transition:fly={{ x: 320, duration: 300 }}
+        class="settings-sidebar glass"
+    >
         <div class="header">
             <h2>Settings</h2>
             <button class="close-btn" onclick={() => rtc.settingsOpen = false}>&times;</button>
@@ -87,12 +91,6 @@
         display: flex;
         flex-direction: column;
         border-left: var(--glass-border);
-        animation: slideIn 0.3s ease;
-    }
-
-    @keyframes slideIn {
-        from { transform: translateX(100%); }
-        to { transform: translateX(0); }
     }
 
     .header {
