@@ -1,0 +1,10 @@
+{
+    "description": "Public group",
+    "public": true,
+    "allow-recording": true,
+    "autokick": false,
+    "autolock": false,
+    "presenter": [
+        {}
+    ]
+}

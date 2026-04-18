@@ -1,3 +1,11 @@
+## Project Configuration
+
+- **Language**: TypeScript
+- **Package Manager**: npm
+- **Add-ons**: eslint, prettier
+
+---
+
 # Project Context: Galène WebRTC Frontend Rewrite
 
 ## The Mission
@@ -28,3 +36,7 @@ We are rewriting the web frontend for the Galène Selective Forwarding Unit (SFU
 * Think step-by-step and outline your architectural approach before writing the code.
 * Ensure you handle the cleanup of `srcObject` streams when a user disconnects or unpublishes a track to prevent memory leaks in the browser.
 * Use global CSS variables (`:root`) for the theme colors to maintain consistency across scoped Svelte components.
+
+## Referencing the original source code
+* `galene/` directory contains the whole repository of galene, including backend and frontend.
+* For examples of the frontend operations see `galene/static/`. 
