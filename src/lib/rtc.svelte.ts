@@ -246,6 +246,8 @@ class WebRTCState {
             this.previewStream.getTracks().forEach(t => t.stop());
             this.previewStream = null;
         }
+        this.micEnabled = false;
+        this.cameraEnabled = false;
     }
 
     async togglePreviewMic() {
@@ -253,13 +255,26 @@ class WebRTCState {
             await this.startPreview(true, false);
             return;
         }
+
+        if (this.micEnabled) {
+            // Turning OFF
+            if (!this.cameraEnabled) {
+                this.stopPreview();
+            } else {
+                // Restart preview with audio:false
+                await this.startPreview(false, true);
+            }
+            return;
+        }
+
+        // Turning ON
         const audioTracks = this.previewStream.getAudioTracks();
         if (audioTracks.length === 0) {
             const wasVideo = this.cameraEnabled;
             await this.startPreview(true, wasVideo);
         } else {
-            audioTracks.forEach(t => t.enabled = !this.micEnabled);
-            this.micEnabled = !this.micEnabled;
+            audioTracks.forEach(t => t.enabled = true);
+            this.micEnabled = true;
         }
     }
 
@@ -268,13 +283,25 @@ class WebRTCState {
             await this.startPreview(false, true);
             return;
         }
+
+        if (this.cameraEnabled) {
+            // Turning OFF
+            if (!this.micEnabled) {
+                this.stopPreview();
+            } else {
+                // Restart preview with video:false
+                await this.startPreview(true, false);
+            }
+            return;
+        }
+
         const videoTracks = this.previewStream.getVideoTracks();
         if (videoTracks.length === 0) {
             const wasAudio = this.micEnabled;
             await this.startPreview(wasAudio, true);
         } else {
-            videoTracks.forEach(t => t.enabled = !this.cameraEnabled);
-            this.cameraEnabled = !this.cameraEnabled;
+            videoTracks.forEach(t => t.enabled = true);
+            this.cameraEnabled = true;
         }
     }
 
