@@ -1,20 +1,11 @@
 <script lang="ts">
     import { rtc } from '$lib/rtc.svelte';
-
-    function toggleCamera() {
-        if (!rtc.localUpStream) {
-            rtc.startCamera();
-        } else {
-            rtc.stopCamera();
-        }
-    }
 </script>
 
 <div class="media-controls glass">
     <button 
         class:active={rtc.micEnabled} 
         onclick={() => rtc.toggleMic()}
-        disabled={!rtc.localUpStream}
     >
         {#if rtc.micEnabled}
             Mute Mic
@@ -25,9 +16,9 @@
 
     <button 
         class:active={rtc.cameraEnabled} 
-        onclick={toggleCamera}
+        onclick={() => rtc.toggleCamera()}
     >
-        {#if !rtc.localUpStream}
+        {#if !rtc.localUpStream || !rtc.cameraEnabled}
             Start Camera
         {:else}
             Stop Camera

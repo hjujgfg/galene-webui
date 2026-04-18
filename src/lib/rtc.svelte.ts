@@ -204,14 +204,14 @@ class WebRTCState {
 
     async close() {
         if (this.localUpStream) {
-            this.stopCamera();
+            this.stopLocalStream();
         }
         if (this.connection) {
             this.connection.close();
         }
     }
 
-    async startCamera() {
+    async startLocalStream(audio: boolean, video: boolean) {
         if (!this.connection) return;
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             this.error = 'Media access is not supported in this browser (likely due to an insecure context/lack of HTTPS).';
@@ -219,20 +219,16 @@ class WebRTCState {
         }
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
-                audio: true,
-                video: true
+                audio: audio,
+                video: video
             });
 
             const up = this.connection.newUpStream();
-            // Disable automatic negotiation to avoid race conditions 
-            // with our manual call below.
             up.pc.onnegotiationneeded = null;
             
-            up.label = 'camera';
+            up.label = video ? 'camera' : 'audio';
             up.setStream(stream);
 
-            // CRITICAL: Manually add tracks to the peer connection 
-            // before negotiating, otherwise the offer will be empty.
             stream.getTracks().forEach((t: any) => {
                 up.pc.addTrack(t, stream);
             });
@@ -242,8 +238,8 @@ class WebRTCState {
             console.log('Local stream connected');
 
             this.localUpStream = up;
-            this.micEnabled = true;
-            this.cameraEnabled = true;
+            this.micEnabled = audio;
+            this.cameraEnabled = video;
 
             up.onclose = () => {
                 const s = up.stream;
@@ -259,28 +255,51 @@ class WebRTCState {
         }
     }
 
-    stopCamera() {
+    stopLocalStream() {
         if (this.localUpStream) {
             this.localUpStream.close();
         }
     }
 
-    toggleMic() {
-        if (!this.localUpStream) return;
+    async toggleMic() {
+        if (!this.localUpStream) {
+            await this.startLocalStream(true, false);
+            return;
+        }
         const stream = this.localUpStream.stream;
         if (stream) {
-            stream.getAudioTracks().forEach((t: any) => {
+            const tracks = stream.getAudioTracks();
+            if (tracks.length === 0 && !this.micEnabled) {
+                // We have a stream (video) but no audio track. Restart with both.
+                const wasVideoEnabled = this.cameraEnabled;
+                this.stopLocalStream();
+                await this.startLocalStream(true, wasVideoEnabled);
+                return;
+            }
+            tracks.forEach((t: any) => {
                 t.enabled = !this.micEnabled;
             });
             this.micEnabled = !this.micEnabled;
         }
     }
 
-    toggleCamera() {
-        if (!this.localUpStream) return;
+    async toggleCamera() {
+        if (!this.localUpStream) {
+            await this.startLocalStream(false, true);
+            return;
+        }
+        
         const stream = this.localUpStream.stream;
         if (stream) {
-            stream.getVideoTracks().forEach((t: any) => {
+            const tracks = stream.getVideoTracks();
+            if (tracks.length === 0 && !this.cameraEnabled) {
+                // We have a stream (audio) but no video track. Restart with both.
+                const wasMicEnabled = this.micEnabled;
+                this.stopLocalStream();
+                await this.startLocalStream(wasMicEnabled, true);
+                return;
+            }
+            tracks.forEach((t: any) => {
                 t.enabled = !this.cameraEnabled;
             });
             this.cameraEnabled = !this.cameraEnabled;
