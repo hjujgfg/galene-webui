@@ -36,6 +36,17 @@ class WebRTCState {
     cameraEnabled = $state(false);
     settingsOpen = $state(false);
     endpoint = $state('');
+    settings = $state({
+        simulcast: 'auto',
+        send: 'unlimited',
+        request: 'everything',
+        activityDetection: false,
+        displayAll: false,
+        mirrorView: true,
+        blackboardMode: false,
+        preprocessing: true,
+        hqaudio: true,
+    });
 
     constructor() {
         if (typeof window !== 'undefined') {
@@ -205,6 +216,12 @@ class WebRTCState {
     }
 
     async startPreview(audio: boolean, video: boolean) {
+        if (!audio && !video) {
+            this.stopPreview();
+            this.micEnabled = false;
+            this.cameraEnabled = false;
+            return;
+        }
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             this.error = 'Media access is not supported in this browser (likely due to an insecure context/lack of HTTPS).';
             return;
@@ -263,6 +280,12 @@ class WebRTCState {
 
     async startLocalStream(audio: boolean, video: boolean) {
         if (!this.connection) return;
+        if (!audio && !video) {
+            this.stopLocalStream();
+            this.micEnabled = false;
+            this.cameraEnabled = false;
+            return;
+        }
         
         try {
             let stream = this.previewStream;
@@ -334,25 +357,34 @@ class WebRTCState {
             return;
         }
 
-        if (this.micEnabled && !this.cameraEnabled) {
-            // Turning off the last active track, stop the whole stream
-            this.stopLocalStream();
+        if (this.micEnabled) {
+            // We want to turn it OFF
+            if (!this.cameraEnabled) {
+                // Last track, just stop
+                this.stopLocalStream();
+            } else {
+                // Video is still on, restart stream with audio:false
+                this.stopLocalStream();
+                await this.startLocalStream(false, true);
+            }
             return;
         }
 
+        // We want to turn it ON
         const stream = this.localUpStream.stream;
         if (stream) {
             const tracks = stream.getAudioTracks();
-            if (tracks.length === 0 && !this.micEnabled) {
+            if (tracks.length === 0) {
+                // We have a stream (video) but no audio track. Restart with both.
                 const wasVideoEnabled = this.cameraEnabled;
                 this.stopLocalStream();
                 await this.startLocalStream(true, wasVideoEnabled);
                 return;
             }
             tracks.forEach((t: any) => {
-                t.enabled = !this.micEnabled;
+                t.enabled = true;
             });
-            this.micEnabled = !this.micEnabled;
+            this.micEnabled = true;
         }
     }
 
@@ -362,25 +394,34 @@ class WebRTCState {
             return;
         }
 
-        if (this.cameraEnabled && !this.micEnabled) {
-            // Turning off the last active track, stop the whole stream
-            this.stopLocalStream();
+        if (this.cameraEnabled) {
+            // We want to turn it OFF
+            if (!this.micEnabled) {
+                // Last track, just stop
+                this.stopLocalStream();
+            } else {
+                // Mic is still on, restart stream with video:false
+                this.stopLocalStream();
+                await this.startLocalStream(true, false);
+            }
             return;
         }
         
+        // We want to turn it ON
         const stream = this.localUpStream.stream;
         if (stream) {
             const tracks = stream.getVideoTracks();
-            if (tracks.length === 0 && !this.cameraEnabled) {
+            if (tracks.length === 0) {
+                // We have a stream (audio) but no video track. Restart with both.
                 const wasMicEnabled = this.micEnabled;
                 this.stopLocalStream();
                 await this.startLocalStream(wasMicEnabled, true);
                 return;
             }
             tracks.forEach((t: any) => {
-                t.enabled = !this.cameraEnabled;
+                t.enabled = true;
             });
-            this.cameraEnabled = !this.cameraEnabled;
+            this.cameraEnabled = true;
         }
     }
 }
