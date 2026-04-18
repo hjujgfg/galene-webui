@@ -249,7 +249,13 @@ class WebRTCState {
 
     stopLocalStream() {
         if (this.localUpStream) {
-            this.localUpStream.close();
+            const up = this.localUpStream;
+            // Explicitly stop tracks before closing to ensure browser 
+            // releases hardware immediately.
+            if (up.stream) {
+                up.stream.getTracks().forEach((t: any) => t.stop());
+            }
+            up.close();
         }
     }
 
@@ -258,11 +264,17 @@ class WebRTCState {
             await this.startLocalStream(true, false);
             return;
         }
+
+        if (this.micEnabled && !this.cameraEnabled) {
+            // Turning off the last active track, stop the whole stream
+            this.stopLocalStream();
+            return;
+        }
+
         const stream = this.localUpStream.stream;
         if (stream) {
             const tracks = stream.getAudioTracks();
             if (tracks.length === 0 && !this.micEnabled) {
-                // We have a stream (video) but no audio track. Restart with both.
                 const wasVideoEnabled = this.cameraEnabled;
                 this.stopLocalStream();
                 await this.startLocalStream(true, wasVideoEnabled);
@@ -280,12 +292,17 @@ class WebRTCState {
             await this.startLocalStream(false, true);
             return;
         }
+
+        if (this.cameraEnabled && !this.micEnabled) {
+            // Turning off the last active track, stop the whole stream
+            this.stopLocalStream();
+            return;
+        }
         
         const stream = this.localUpStream.stream;
         if (stream) {
             const tracks = stream.getVideoTracks();
             if (tracks.length === 0 && !this.cameraEnabled) {
-                // We have a stream (audio) but no video track. Restart with both.
                 const wasMicEnabled = this.micEnabled;
                 this.stopLocalStream();
                 await this.startLocalStream(wasMicEnabled, true);
