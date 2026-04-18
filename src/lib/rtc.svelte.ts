@@ -34,20 +34,12 @@ class WebRTCState {
     micEnabled = $state(false);
     cameraEnabled = $state(false);
     settingsOpen = $state(false);
-    settings = $state({
-        simulcast: 'auto',
-        send: 'normal',
-        request: 'everything',
-        activityDetection: false,
-        displayAll: false,
-        mirrorView: true,
-        blackboardMode: false,
-        preprocessing: true,
-        hqaudio: false,
-    });
+    endpoint = $state('');
 
     constructor() {
         if (typeof window !== 'undefined') {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            this.endpoint = `${protocol}//${window.location.host}/ws`;
             this.init();
         }
     }
