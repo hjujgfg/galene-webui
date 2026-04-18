@@ -31,6 +31,7 @@ class WebRTCState {
     error = $state<string | null>(null);
     remoteTracks = $state<RemoteTrack[]>([]);
     localUpStream = $state<any>(null);
+    previewStream = $state<MediaStream | null>(null);
     micEnabled = $state(false);
     cameraEnabled = $state(false);
     settingsOpen = $state(false);
@@ -203,17 +204,78 @@ class WebRTCState {
         }
     }
 
-    async startLocalStream(audio: boolean, video: boolean) {
-        if (!this.connection) return;
+    async startPreview(audio: boolean, video: boolean) {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             this.error = 'Media access is not supported in this browser (likely due to an insecure context/lack of HTTPS).';
             return;
         }
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
+            if (this.previewStream) {
+                this.stopPreview();
+            }
+            this.previewStream = await navigator.mediaDevices.getUserMedia({
                 audio: audio,
                 video: video
             });
+            this.micEnabled = audio;
+            this.cameraEnabled = video;
+        } catch (e: any) {
+            this.error = e.toString();
+        }
+    }
+
+    stopPreview() {
+        if (this.previewStream) {
+            this.previewStream.getTracks().forEach(t => t.stop());
+            this.previewStream = null;
+        }
+    }
+
+    async togglePreviewMic() {
+        if (!this.previewStream) {
+            await this.startPreview(true, false);
+            return;
+        }
+        const audioTracks = this.previewStream.getAudioTracks();
+        if (audioTracks.length === 0) {
+            const wasVideo = this.cameraEnabled;
+            await this.startPreview(true, wasVideo);
+        } else {
+            audioTracks.forEach(t => t.enabled = !this.micEnabled);
+            this.micEnabled = !this.micEnabled;
+        }
+    }
+
+    async togglePreviewCamera() {
+        if (!this.previewStream) {
+            await this.startPreview(false, true);
+            return;
+        }
+        const videoTracks = this.previewStream.getVideoTracks();
+        if (videoTracks.length === 0) {
+            const wasAudio = this.micEnabled;
+            await this.startPreview(wasAudio, true);
+        } else {
+            videoTracks.forEach(t => t.enabled = !this.cameraEnabled);
+            this.cameraEnabled = !this.cameraEnabled;
+        }
+    }
+
+    async startLocalStream(audio: boolean, video: boolean) {
+        if (!this.connection) return;
+        
+        try {
+            let stream = this.previewStream;
+            if (!stream) {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    this.error = 'Media access is not supported in this browser (likely due to an insecure context/lack of HTTPS).';
+                    return;
+                }
+                stream = await navigator.mediaDevices.getUserMedia({
+                    audio: audio,
+                    video: video
+                });
+            }
 
             const up = this.connection.newUpStream();
             up.pc.onnegotiationneeded = null;
@@ -230,8 +292,15 @@ class WebRTCState {
             console.log('Local stream connected');
 
             this.localUpStream = up;
-            this.micEnabled = audio;
-            this.cameraEnabled = video;
+            this.previewStream = null; // Adopted by upStream
+
+            // Check actual track enabled state to preserve choices from preview
+            if (stream) {
+                const audioTrack = stream.getAudioTracks()[0];
+                const videoTrack = stream.getVideoTracks()[0];
+                if (audioTrack) this.micEnabled = audioTrack.enabled;
+                if (videoTrack) this.cameraEnabled = videoTrack.enabled;
+            }
 
             up.onclose = () => {
                 const s = up.stream;
