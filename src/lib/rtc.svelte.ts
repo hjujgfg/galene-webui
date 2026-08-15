@@ -31,6 +31,8 @@ class WebRTCState {
     error = $state<string | null>(null);
     remoteTracks = $state<RemoteTrack[]>([]);
     localUpStream = $state<any>(null);
+    screenUpStream = $state<any>(null);
+    screenSharing = $state(false);
     previewStream = $state<MediaStream | null>(null);
     micEnabled = $state(false);
     cameraEnabled = $state(false);
@@ -143,11 +145,15 @@ class WebRTCState {
             stream.ondowntrack = (track: any) => {
                 console.log('ondowntrack:', track.kind, track.label);
                 if (!this.remoteTracks.some(t => t.stream === stream)) {
+                    let displayName = stream.username || stream.source || 'Peer';
+                    if (stream.label === 'screenshare' || stream.label === 'screen') {
+                        displayName += ' (Screen)';
+                    }
                     this.remoteTracks.push({
                         id: stream.id,
                         stream: stream,
-                        kind: 'video', // we want video if it exists
-                        label: stream.username || stream.source || 'Peer'
+                        kind: 'video',
+                        label: displayName
                     });
                 }
             };
@@ -206,11 +212,66 @@ class WebRTCState {
     }
 
     async close() {
+        if (this.screenUpStream) {
+            this.stopScreenShare();
+        }
         if (this.localUpStream) {
             this.stopLocalStream();
         }
         if (this.connection) {
             this.connection.close();
+        }
+    }
+
+    async startScreenShare() {
+        if (!this.connection) return;
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+            this.error = 'Screen sharing is not supported in this browser.';
+            return;
+        }
+        try {
+            const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+            const up = this.connection.newUpStream();
+            up.label = 'screenshare';
+            up.setStream(stream);
+            this.screenUpStream = up;
+            this.screenSharing = true;
+
+            const videoTrack = stream.getVideoTracks()[0];
+            if (videoTrack) {
+                videoTrack.onended = () => {
+                    this.stopScreenShare();
+                };
+            }
+
+            up.onclose = () => {
+                if (up.stream) {
+                    up.stream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
+                }
+                this.screenUpStream = null;
+                this.screenSharing = false;
+            };
+        } catch (e: any) {
+            if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') {
+                console.error('Screen share error:', e);
+                this.error = e.message || e.toString();
+            }
+        }
+    }
+
+    stopScreenShare() {
+        if (this.screenUpStream) {
+            this.screenUpStream.close();
+            this.screenUpStream = null;
+            this.screenSharing = false;
+        }
+    }
+
+    toggleScreenShare() {
+        if (this.screenSharing) {
+            this.stopScreenShare();
+        } else {
+            this.startScreenShare();
         }
     }
 

@@ -47,6 +47,17 @@
     </button>
     
     <button 
+        class:active={rtc.screenSharing} 
+        onclick={() => rtc.toggleScreenShare()}
+    >
+        {#if rtc.screenSharing}
+            Stop Screen
+        {:else}
+            Share Screen
+        {/if}
+    </button>
+    
+    <button 
         class:active={rtc.userListOpen} 
         onclick={() => rtc.userListOpen = !rtc.userListOpen}
     >
