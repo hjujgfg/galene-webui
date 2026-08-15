@@ -2,12 +2,25 @@
     import { onMount, onDestroy } from 'svelte';
     import { rtc } from '$lib/rtc.svelte';
 
+    interface Props {
+        initialGroup?: string;
+    }
+
+    let { initialGroup = 'public' }: Props = $props();
+
     let username = $state('');
     let password = $state('');
-    let group = $state('public');
+    let group = $state(initialGroup);
     let loading = $state(false);
+    let copied = $state(false);
     
     let videoPreview: HTMLVideoElement | undefined = $state();
+
+    $effect(() => {
+        if (initialGroup) {
+            group = initialGroup;
+        }
+    });
 
     onMount(async () => {
         // Default to both enabled for preview
@@ -27,11 +40,16 @@
         }
     });
 
+    function copyLink() {
+        const url = `${window.location.origin}/${group}`;
+        navigator.clipboard.writeText(url);
+        copied = true;
+        setTimeout(() => copied = false, 2000);
+    }
+
     async function handleLogin() {
         loading = true;
         const finalUsername = username || `user_${Math.floor(Math.random() * 1000)}`;
-        // Capture choices now because onDestroy will trigger during rtc.join
-        // and reset the shared rtc state.
         const desiredMic = rtc.micEnabled;
         const desiredCamera = rtc.cameraEnabled;
 
@@ -89,26 +107,27 @@
         <form onsubmit={handleLogin}>
             <div class="header">
                 <img src="/src/lib/assets/favicon.svg" alt="Galene" class="logo" />
-                <h2>Join Galène</h2>
-            </div>
-            
-            <div class="field">
-                <label for="group">Group Name</label>
-                <input id="group" bind:value={group} disabled={loading} placeholder="e.g. public" />
+                <h2>Ready to join?</h2>
+                <div class="room-pill">
+                    <span>Room: <strong>{group}</strong></span>
+                    <button type="button" class="copy-pill-btn" onclick={copyLink}>
+                        {copied ? 'Copied!' : 'Copy Link'}
+                    </button>
+                </div>
             </div>
             
             <div class="field">
                 <label for="username">Your Name</label>
-                <input id="username" bind:value={username} disabled={loading} placeholder="Username" />
+                <input id="username" bind:value={username} disabled={loading} placeholder="Enter your name" required />
             </div>
             
             <div class="field">
-                <label for="password">Password (optional)</label>
+                <label for="password">Password (if room is protected)</label>
                 <input id="password" type="password" bind:value={password} disabled={loading} placeholder="••••••••" />
             </div>
 
             <button type="submit" class="submit-btn" disabled={loading}>
-                {loading ? 'Connecting...' : 'Join Meeting'}
+                {loading ? 'Joining meeting...' : 'Join Now'}
             </button>
         </form>
     </div>
@@ -163,7 +182,7 @@
     .avatar {
         width: 80px;
         height: 80px;
-        background: var(--accent-color);
+        background: var(--accent-color, #00f2fe);
         color: black;
         border-radius: 50%;
         display: flex;
@@ -187,18 +206,21 @@
         font-weight: 600;
         background: rgba(0, 0, 0, 0.6);
         border: 1px solid rgba(255, 255, 255, 0.2);
+        color: white;
+        cursor: pointer;
     }
 
     .control-btn.active {
-        background: var(--accent-color);
+        background: var(--accent-color, #00f2fe);
         color: black;
-        border-color: var(--accent-color);
+        border-color: var(--accent-color, #00f2fe);
     }
 
     .login-container {
         padding: 2.5rem;
         width: 100%;
         max-width: 380px;
+        border-radius: 16px;
     }
 
     .header {
@@ -207,9 +229,32 @@
     }
 
     .logo {
-        width: 48px;
-        height: 48px;
-        margin-bottom: 1rem;
+        width: 44px;
+        height: 44px;
+        margin-bottom: 0.5rem;
+    }
+
+    .room-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+        padding: 0.4rem 0.8rem;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 20px;
+        font-size: 0.85rem;
+    }
+
+    .copy-pill-btn {
+        background: rgba(0, 242, 254, 0.15);
+        color: var(--accent-color, #00f2fe);
+        border: 1px solid rgba(0, 242, 254, 0.3);
+        border-radius: 12px;
+        padding: 0.2rem 0.6rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        cursor: pointer;
     }
 
     form {
@@ -230,20 +275,31 @@
         opacity: 0.8;
     }
 
+    .field input {
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: white;
+        font-size: 0.95rem;
+    }
+
     h2 {
         margin: 0;
-        color: var(--accent-color);
+        color: #fff;
         letter-spacing: -0.02em;
     }
 
     .submit-btn {
         margin-top: 0.5rem;
-        padding: 0.75rem;
+        padding: 0.85rem;
         font-size: 1rem;
-        background: var(--accent-color);
+        background: var(--accent-color, #00f2fe);
         color: black;
         border: none;
-        font-weight: 600;
+        border-radius: 8px;
+        font-weight: 700;
+        cursor: pointer;
     }
 
     @media (max-width: 900px) {
