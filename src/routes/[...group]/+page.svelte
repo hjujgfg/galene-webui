@@ -10,7 +10,7 @@
     import UserList from '$lib/UserList.svelte';
     import SettingsSidebar from '$lib/SettingsSidebar.svelte';
 
-    let groupParam = $derived($page.params.group);
+    let groupParam = $derived($page.params.group || 'public');
 </script>
 
 <svelte:head>
