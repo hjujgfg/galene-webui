@@ -90,20 +90,17 @@ class WebRTCState {
             }
         };
 
-        sc.onjoined = (kind: string, group: string, permissions: string[], status: any, data: any, error: string | null) => {
-            console.log('onjoined:', { kind, group, permissions, status, error });
+        sc.onjoined = (kind: string, group: string, permissions: string[], status: any, data: any, error: string | null, value: string | null) => {
+            console.log('onjoined:', { kind, group, permissions, status, error, value });
             if (kind === 'join' || kind === 'change') {
                 this.joined = true;
                 this.error = null;
                 if (status && status.rtcConfiguration) {
                     sc.rtcConfiguration = status.rtcConfiguration;
                 }
-                // Request media from others. 
-                // In Galene protocol, '' means "all users", 
-                // and we want both video and audio.
                 sc.request({ '': ['video', 'audio'] });
             } else if (kind === 'fail' || kind === 'leave') {
-                this.error = error || (kind === 'fail' ? 'Join failed' : null);
+                this.error = value || error || (kind === 'fail' ? 'Join failed' : null);
                 this.joined = false;
             }
         };
@@ -191,12 +188,12 @@ class WebRTCState {
             const sc = this.connection;
             const oldJoined = sc.onjoined;
 
-            sc.onjoined = (kind: string, group: string, permissions: string[], status: any, data: any, error: string | null) => {
-                if (oldJoined) oldJoined.call(sc, kind, group, permissions, status, data, error);
+            sc.onjoined = (kind: string, group: string, permissions: string[], status: any, data: any, error: string | null, value: string | null) => {
+                if (oldJoined) oldJoined.call(sc, kind, group, permissions, status, data, error, value);
                 if (kind === 'join' || kind === 'change') {
                     resolve();
                 } else if (kind === 'fail') {
-                    reject(new Error(error || 'Join failed'));
+                    reject(new Error(value || error || 'Join failed'));
                 }
             };
 
