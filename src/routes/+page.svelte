@@ -8,7 +8,7 @@
         const chars = 'abcdefghijklmnopqrstuvwxyz';
         const segment = (len: number) => 
             Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-        return `${segment(3)}-${segment(4)}-${segment(3)}`;
+        return `public/${segment(3)}-${segment(4)}-${segment(3)}`;
     }
 
     function createNewMeeting() {
