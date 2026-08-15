@@ -234,7 +234,11 @@ class WebRTCState {
             }
             this.previewStream = await navigator.mediaDevices.getUserMedia({
                 audio: audio,
-                video: video
+                video: video ? {
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    frameRate: { ideal: 30 }
+                } : false
             });
             this.micEnabled = audio;
             this.cameraEnabled = video;
@@ -325,7 +329,11 @@ class WebRTCState {
                 }
                 stream = await navigator.mediaDevices.getUserMedia({
                     audio: audio,
-                    video: video
+                    video: video ? {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        frameRate: { ideal: 30 }
+                    } : false
                 });
             }
 
