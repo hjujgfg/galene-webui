@@ -87,6 +87,14 @@ class WebRTCState {
             console.log('onuser:', { id, kind });
             if (kind === 'add' || kind === 'change') {
                 this.users[id] = sc.users[id];
+                // Request/re-request media from all users including screen shares
+                if (this.connection) {
+                    this.connection.request({
+                        '': ['video', 'audio'],
+                        'screenshare': ['video', 'audio'],
+                        'screen': ['video', 'audio']
+                    });
+                }
             } else if (kind === 'delete') {
                 delete this.users[id];
             }
@@ -100,7 +108,11 @@ class WebRTCState {
                 if (status && status.rtcConfiguration) {
                     sc.rtcConfiguration = status.rtcConfiguration;
                 }
-                sc.request({ '': ['video', 'audio'] });
+                sc.request({
+                    '': ['video', 'audio'],
+                    'screenshare': ['video', 'audio'],
+                    'screen': ['video', 'audio']
+                });
             } else if (kind === 'fail' || kind === 'leave') {
                 this.error = value || error || (kind === 'fail' ? 'Join failed' : null);
                 this.joined = false;
@@ -130,20 +142,8 @@ class WebRTCState {
 
         sc.ondownstream = (stream: any) => {
             console.log('ondownstream:', stream);
-            
-            stream.onclose = () => {
-                this.remoteTracks = this.remoteTracks.filter(t => t.stream !== stream);
-            };
 
-            stream.onerror = (e: any) => {
-                console.error('Stream error:', e);
-            };
-
-            // Stream objects in protocol.js can have multiple tracks, 
-            // but for UI tiles we usually want one tile per Stream object.
-            // When we get a new downtrack, we check if we already have a tile for this stream.
-            stream.ondowntrack = (track: any) => {
-                console.log('ondowntrack:', track.kind, track.label);
+            const addTrackToUI = () => {
                 if (!this.remoteTracks.some(t => t.stream === stream)) {
                     let displayName = stream.username || stream.source || 'Peer';
                     if (stream.label === 'screenshare' || stream.label === 'screen') {
@@ -156,6 +156,24 @@ class WebRTCState {
                         label: displayName
                     });
                 }
+            };
+            
+            stream.onclose = () => {
+                this.remoteTracks = this.remoteTracks.filter(t => t.stream !== stream);
+            };
+
+            stream.onerror = (e: any) => {
+                console.error('Stream error:', e);
+            };
+
+            // Check if stream already has active media tracks
+            if (stream.stream && stream.stream.getTracks().length > 0) {
+                addTrackToUI();
+            }
+
+            stream.ondowntrack = (track: any) => {
+                console.log('ondowntrack:', track.kind, track.label);
+                addTrackToUI();
             };
         };
     }
